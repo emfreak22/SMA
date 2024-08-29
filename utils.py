@@ -5,4 +5,4 @@ def get_today_date():
     if weekno > 5:
         raise Exception ('Its a weekend, market is closed')
     else: 
-        return str(datetime.now().date())
+        return str(datetime.date.today())
