@@ -1,9 +1,11 @@
+import re
+from datetime import datetime
+
+import pandas as pd
+
+import utils
 import yfinance as yf
 from niftyy import get_nifty_500
-from datetime import datetime
-import re
-import utils
-import pandas as pd
 
 
 def generate_file(data):
@@ -45,7 +47,7 @@ def check_moving_averages(stock, date=datetime.today().strftime("%Y-%m-%d")):
             "Stock": stock,
             "Today Closed": close_price,
             "Today Open": open_price,
-            "Crossed?": True
+            "Crossed?": True,
         }
 
         crossing_condition = sma13_price > sma34_price
@@ -53,9 +55,9 @@ def check_moving_averages(stock, date=datetime.today().strftime("%Y-%m-%d")):
         # crossed_sma21 = open_price > sma21_price
 
         if crossing_condition:
-            print(f'{stock} has crossed 13 SMA')
+            print(f"{stock} has crossed 13 SMA")
         else:
-            stock_data['Crossed'] = False
+            stock_data["Crossed"] = False
         return stock_data
 
     except Exception as e:
