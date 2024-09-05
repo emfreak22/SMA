@@ -1,5 +1,5 @@
 import os
-
+from data_generator import generate_data
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 n = 10
@@ -231,7 +231,12 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
 
 
 def main():
-    combined_df = load_and_merge_stock_data(CSV_FOLDER_PATH)
+    try:
+        combined_df = load_and_merge_stock_data(CSV_FOLDER_PATH)
+    except ValueError:
+        print("Seems like downloads folder is not populated... \n populating now...")
+        generate_data()
+
     final_balance, final_portfolio, transaction_history = process_trades(
         combined_df, START_BALANCE, max_stocks=N, pick_n=n
     )
