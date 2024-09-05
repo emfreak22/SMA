@@ -102,5 +102,6 @@ def fetch_stock_data(symbol: str) -> pd.DataFrame:
     price = yf.download(symbol, start=START, end=START + datetime.timedelta(days=1))
     return price
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     generate_data()

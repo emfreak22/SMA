@@ -1,5 +1,6 @@
 import os
 from data_generator import generate_data
+
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 n = 10
@@ -104,11 +105,14 @@ def refresh_final_portfolio(portfolio, date, combined_data):
     # close_price = today_data.loc[symbol]["Close"]
     for symbol in portfolio:
         try:
-            close_price = combined_data.loc[date].loc[symbol]['Close']
-            portfolio[symbol]["current_value"] = close_price * portfolio[symbol]["quantity"]
+            close_price = combined_data.loc[date].loc[symbol]["Close"]
+            portfolio[symbol]["current_value"] = (
+                close_price * portfolio[symbol]["quantity"]
+            )
             portfolio[symbol]["last_day_closing_value"] = close_price
         except Exception:
             print("No data for today, not setting it to any value then")
+
 
 def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
     """
@@ -137,7 +141,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
 
             for symbol in top_stocks:
                 try:
-                    if symbol not in portfolio and len(portfolio)< N:
+                    if symbol not in portfolio and len(portfolio) < N:
                         stock_data = potential_stocks.loc[symbol]
                         buy_price = stock_data["Close"]
                         quantity = balance / N // buy_price
@@ -150,7 +154,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                         print(
                             f"Bought {quantity} of {symbol} at {buy_price}. Remaining balance: {balance} on date {date}"
                         )
-                        max_trades_for_the_day+=1
+                        max_trades_for_the_day += 1
                         history = {
                             "Stock": symbol,
                             "Date of buying": date,
@@ -217,7 +221,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                                     "Quantity": quantity,
                                     "Remaining Balance": balance,
                                 }
-                                max_trades_for_the_day+=1
+                                max_trades_for_the_day += 1
                                 transaction_history.append(history)
                                 print(
                                     f"Bought {quantity_next} of {new_symbol} at {buy_price_next}. Remaining balance: {balance}"
@@ -225,8 +229,9 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
 
             except Exception as e:
                 print(f"No data for {date}, {symbol}: {e}")
-        print(f'Date {date} portfolio {len(portfolio)}, max_trades_for_the_day : {max_trades_for_the_day}')
-
+        print(
+            f"Date {date} portfolio {len(portfolio)}, max_trades_for_the_day : {max_trades_for_the_day}"
+        )
 
         # Remove sold stocks from the portfolio
         for symbol in portfolio_to_remove:
@@ -256,11 +261,13 @@ def main():
     remaining_portfolio_value = 0
     for remaining_stocks in final_portfolio:
         for entry in transaction_history:
-            if entry['Stock'] == remaining_stocks and not entry.get('Sell Price'):
-                entry['Sell Price'] = final_portfolio[remaining_stocks]['last_day_closing_value']
+            if entry["Stock"] == remaining_stocks and not entry.get("Sell Price"):
+                entry["Sell Price"] = final_portfolio[remaining_stocks][
+                    "last_day_closing_value"
+                ]
                 entry["Percentage Change"] = (
-                                                  (entry["Sell Price"] - entry["Buy Price"]) / entry["Buy Price"]
-                                          ) * 100
+                    (entry["Sell Price"] - entry["Buy Price"]) / entry["Buy Price"]
+                ) * 100
 
         current_value = final_portfolio[remaining_stocks]["current_value"].astype(int)
         remaining_portfolio_value += current_value
