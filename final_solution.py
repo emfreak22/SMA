@@ -236,6 +236,7 @@ def main():
     except ValueError:
         print("Seems like downloads folder is not populated... \n populating now...")
         generate_data()
+        combined_df = load_and_merge_stock_data(CSV_FOLDER_PATH)
 
     final_balance, final_portfolio, transaction_history = process_trades(
         combined_df, START_BALANCE, max_stocks=N, pick_n=n
