@@ -3,7 +3,7 @@ from data_generator import generate_data
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 n = 10
-N = 50  # Number of stocks to pick if 'long' condition is satisfied
+N = 10  # Number of stocks to pick if 'long' condition is satisfied
 
 import pandas as pd
 
@@ -39,12 +39,12 @@ def make_a_beautiful_excel(transaction_history=None):
 
     # Apply conditional formatting to the 'Percentage Change' column
     worksheet.conditional_format(
-        "I2:I{}".format(len(df) + 1),
+        "G2:G{}".format(len(df) + 1),
         {"type": "cell", "criteria": ">", "value": 1, "format": green_fill},
     )
 
     worksheet.conditional_format(
-        "I2:I{}".format(len(df) + 1),
+        "G2:G{}".format(len(df) + 1),
         {"type": "cell", "criteria": "<=", "value": 1, "format": red_fill},
     )
 
@@ -100,10 +100,15 @@ def check_long_close_condition(stock_data):
     return stock_data["Fast_MA"] < stock_data["Slow_MA"]
 
 
-def refresh_final_portfolio(portfolio, symbol, close_price):
-    portfolio[symbol]["current_value"] = close_price * portfolio[symbol]["quantity"]
-    portfolio[symbol]["last_day_closing_value"] = close_price
-
+def refresh_final_portfolio(portfolio, date, combined_data):
+    # close_price = today_data.loc[symbol]["Close"]
+    for symbol in portfolio:
+        try:
+            close_price = combined_data.loc[date].loc[symbol]['Close']
+            portfolio[symbol]["current_value"] = close_price * portfolio[symbol]["quantity"]
+            portfolio[symbol]["last_day_closing_value"] = close_price
+        except Exception:
+            print("No data for today, not setting it to any value then")
 
 def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
     """
@@ -113,6 +118,8 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
     portfolio = {}
     transaction_history = []
     all_dates = combined_df.index.get_level_values("Date").unique()
+    # Sort the dates
+    all_dates = all_dates.sort_values()
 
     for date in all_dates:
         max_trades_for_the_day = 0
@@ -149,7 +156,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                             "Date of buying": date,
                             "Buy Price": buy_price,
                             "Quantity": quantity,
-                            "Remaining Balance": balance,
+                            # "Remaining Balance": balance,
                         }
                         transaction_history.append(history)
                 except Exception as e:
@@ -160,8 +167,6 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
         for symbol in list(portfolio.keys()):
             try:
                 try:
-                    close_price = today_data.loc[symbol]["Close"]
-                    refresh_final_portfolio(portfolio, symbol, close_price)
                     stock_data = today_data.loc[symbol]
                 except Exception:
                     pass
@@ -176,7 +181,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                         "Stock": symbol,
                         "Sell Price": sell_price,
                         "Date of selling": date,
-                        "Balance after selling": balance,
+                        # "Balance after selling": balance,
                     }
                     for i in transaction_history:
                         if i["Stock"] == symbol and "Sell Price" not in i:
@@ -226,6 +231,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
         # Remove sold stocks from the portfolio
         for symbol in portfolio_to_remove:
             del portfolio[symbol]
+        refresh_final_portfolio(portfolio, date, combined_df)
 
     return balance, portfolio, transaction_history
 
@@ -249,11 +255,17 @@ def main():
     )
     remaining_portfolio_value = 0
     for remaining_stocks in final_portfolio:
+        for entry in transaction_history:
+            if entry['Stock'] == remaining_stocks and not entry.get('Sell Price'):
+                entry['Sell Price'] = final_portfolio[remaining_stocks]['last_day_closing_value']
+                entry["Percentage Change"] = (
+                                                  (entry["Sell Price"] - entry["Buy Price"]) / entry["Buy Price"]
+                                          ) * 100
+
         current_value = final_portfolio[remaining_stocks]["current_value"].astype(int)
         remaining_portfolio_value += current_value
     print(final_balance + remaining_portfolio_value)
     make_a_beautiful_excel(transaction_history)
-    df = pd.DataFrame(data=transaction_history)
 
 
 if __name__ == "__main__":
