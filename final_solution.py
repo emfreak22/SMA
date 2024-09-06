@@ -1,6 +1,6 @@
 import os
 from data_generator import generate_data
-
+import plotly.graph_objects as go
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 n = 10
@@ -9,6 +9,57 @@ N = 10  # Number of stocks to pick if 'long' condition is satisfied
 import pandas as pd
 
 
+def create_an_equity_curve(data):
+    try:
+        # Print the data for debugging
+        print("Data received:", data)
+
+        # Convert dictionary to DataFrame
+        df = pd.DataFrame(list(data.items()), columns=['Date', 'Value'])
+
+        # Convert 'Date' column to datetime
+        df['Date'] = pd.to_datetime(df['Date'])
+
+        # Set 'Date' as the index
+        df.set_index('Date', inplace=True)
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Add trace
+        fig.add_trace(go.Scatter(
+            x=df.index,  # Use the index for x-axis
+            y=df['Value'],
+            mode='lines+markers',
+            name='Value',
+            line=dict(color='royalblue', width=2),
+            marker=dict(size=8)
+        ))
+
+        # Update layout
+        fig.update_layout(
+            title='Values Over Time',
+            xaxis_title='Date',
+            yaxis_title='Value',
+            xaxis=dict(
+                tickformat='%b %d',
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGrey'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGrey'
+            ),
+            template='plotly_white'
+        )
+
+        # Show the plot
+        fig.show()
+
+    except Exception as e:
+        print("An error occurred:", e)
 def make_a_beautiful_excel(transaction_history=None):
     # Create DataFrame from the provided transaction history
     df = pd.DataFrame(data=transaction_history)
@@ -124,8 +175,10 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
     all_dates = combined_df.index.get_level_values("Date").unique()
     # Sort the dates
     all_dates = all_dates.sort_values()
-
+    daily_balance = {}
+    total_portfolio_value = START_BALANCE
     for date in all_dates:
+        daily_portfolio_value = 0
         max_trades_for_the_day = 0
 
         today_data = combined_df.loc[date]
@@ -144,13 +197,15 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                     if symbol not in portfolio and len(portfolio) < N:
                         stock_data = potential_stocks.loc[symbol]
                         buy_price = stock_data["Close"]
-                        quantity = balance / N // buy_price
+                        quantity = total_portfolio_value / (N - len(portfolio)) // buy_price
+                        total_portfolio_value = total_portfolio_value - quantity*buy_price
                         portfolio[symbol] = {
                             "quantity": quantity,
                             "buy_price": buy_price,
                         }
 
-                        balance -= quantity * buy_price
+                        money_spent = quantity * buy_price
+                        daily_portfolio_value -= money_spent
                         print(
                             f"Bought {quantity} of {symbol} at {buy_price}. Remaining balance: {balance} on date {date}"
                         )
@@ -180,7 +235,9 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
 
                     sell_price = stock_data["Close"]
                     quantity = portfolio[symbol]["quantity"]
-                    balance += quantity * sell_price
+                    money_spent = quantity * sell_price
+                    daily_portfolio_value += money_spent
+                    total_portfolio_value = total_portfolio_value + money_spent
                     sell_history = {
                         "Stock": symbol,
                         "Sell Price": sell_price,
@@ -209,7 +266,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                             if new_symbol != symbol and new_symbol not in portfolio:
                                 next_stock_data = potential_stocks.loc[new_symbol]
                                 buy_price_next = next_stock_data["Close"]
-                                quantity_next = balance // buy_price_next
+                                quantity_next = total_portfolio_value // buy_price_next
                                 portfolio[new_symbol] = {
                                     "quantity": quantity_next,
                                     "buy_price": buy_price_next,
@@ -223,6 +280,9 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                                 }
                                 max_trades_for_the_day += 1
                                 transaction_history.append(history)
+                                money_spent = quantity * buy_price
+                                daily_portfolio_value -= money_spent
+                                total_portfolio_value = total_portfolio_value - quantity * buy_price
                                 print(
                                     f"Bought {quantity_next} of {new_symbol} at {buy_price_next}. Remaining balance: {balance}"
                                 )
@@ -232,13 +292,17 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
         print(
             f"Date {date} portfolio {len(portfolio)}, max_trades_for_the_day : {max_trades_for_the_day}"
         )
-
+        # if daily_portfolio_value > 1:
+        #     total_portfolio_value += daily_portfolio_value
+        # else:
+        #     total_portfolio_value = total_portfolio_value + daily_portfolio_value
         # Remove sold stocks from the portfolio
         for symbol in portfolio_to_remove:
             del portfolio[symbol]
         refresh_final_portfolio(portfolio, date, combined_df)
-
-    return balance, portfolio, transaction_history
+        daily_balance[str(date)] = total_portfolio_value
+        print(f"daily_portfolio_value: {daily_portfolio_value}, total portfolio value: {total_portfolio_value}")
+    return balance, portfolio, transaction_history, daily_balance
 
 
 def main():
@@ -249,7 +313,7 @@ def main():
         generate_data()
         combined_df = load_and_merge_stock_data(CSV_FOLDER_PATH)
 
-    final_balance, final_portfolio, transaction_history = process_trades(
+    final_balance, final_portfolio, transaction_history, daily_balance = process_trades(
         combined_df, START_BALANCE, max_stocks=N, pick_n=n
     )
 
@@ -273,7 +337,12 @@ def main():
         remaining_portfolio_value += current_value
     print(final_balance + remaining_portfolio_value)
     make_a_beautiful_excel(transaction_history)
-
+    x = input('Do you want an equity curve? Y/Yes or N/No: ')
+    if x.lower() in ['y','yes']:
+        create_an_equity_curve(daily_balance)
+    else:
+        print("Exiting")
+        exit()
 
 if __name__ == "__main__":
     main()
