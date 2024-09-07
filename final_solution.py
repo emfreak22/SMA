@@ -1,14 +1,50 @@
 import os
-from data_generator import generate_data
+from data_generator import generate_data, START,END
+from nifty_data import plot_nifty500_investment
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from datetime import datetime
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 n = 10
 N = 10  # Number of stocks to pick if 'long' condition is satisfied
-
+per_stock_allocation = START_BALANCE/N
 import pandas as pd
 
+def create_curve2(data, benchmark):
+    dates = [datetime.strptime(date, '%Y-%m-%d %H:%M:%S') for date in data.keys()]
 
+    # Convert the values to a list
+
+    formatted_benchmark_data = {ts.strftime('%Y-%m-%d'): value for ts, value in benchmark.items()}
+    formatted_algo_data = {
+    datetime.strptime(date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d'): value
+    for date, value in data.items()}
+    common_keys = set(formatted_algo_data.keys()).intersection(set(formatted_benchmark_data.keys()))
+    # Extract the common data points
+    x = [key for key in common_keys]
+    y1 = [formatted_algo_data[key] for key in common_keys]
+    y2 = [formatted_benchmark_data[key] for key in common_keys]
+
+    # Sort the data by the common keys (which are dates)
+    x, y1, y2 = zip(*sorted(zip(x, y1, y2)))
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(x, y1, label='Algorithm curve', color='blue')
+    plt.plot(x, y2, label='Nifty 500 curve', color='green')
+
+    # Enhancing the plot
+    plt.title('Comparison between Two Datasets', fontsize=16)
+    plt.xlabel('Date', fontsize=14)
+    plt.ylabel('Value', fontsize=14)
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Show the plot
+    plt.show()
 def create_an_equity_curve(data):
     try:
         # Print the data for debugging
@@ -154,15 +190,19 @@ def check_long_close_condition(stock_data):
 
 def refresh_final_portfolio(portfolio, date, combined_data):
     # close_price = today_data.loc[symbol]["Close"]
+    worth = 0
     for symbol in portfolio:
         try:
             close_price = combined_data.loc[date].loc[symbol]["Close"]
-            portfolio[symbol]["current_value"] = (
-                close_price * portfolio[symbol]["quantity"]
-            )
-            portfolio[symbol]["last_day_closing_value"] = close_price
         except Exception:
             print("No data for today, not setting it to any value then")
+            close_price = portfolio[symbol]['last_day_closing_value']
+        amount = close_price * portfolio[symbol]["quantity"]
+        portfolio[symbol]["current_value"] = amount
+        portfolio[symbol]["last_day_closing_value"] = close_price
+        worth+= amount
+
+    return worth, portfolio
 
 
 def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
@@ -176,16 +216,16 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
     # Sort the dates
     all_dates = all_dates.sort_values()
     balance_sheet = {}
-    total_portfolio_value = START_BALANCE
+    wallet_balance = START_BALANCE
     for date in all_dates:
         today_data = combined_df.loc[date]
-        print(f"Portfolio {len(portfolio)}")
+        print(f"Date {date} , Portfolio {len(portfolio)}")
         if len(portfolio) < N:
             potential_stocks = today_data[
                 today_data.apply(check_long_condition, axis=1)
             ]
             if potential_stocks.empty:
-                print("No long for the day, sadly...")
+                # print("No long for the day, sadly...")
                 continue
             top_stocks = get_top_stocks_by_volume(potential_stocks, date, top_n=pick_n)
 
@@ -194,10 +234,11 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                     if symbol not in portfolio and len(portfolio) < N:
                         stock_data = potential_stocks.loc[symbol]
                         buy_price = stock_data["Close"]
-                        quantity = total_portfolio_value / (N-len(portfolio)) // buy_price
-                        print(f" {total_portfolio_value} / {N-len(portfolio)} // {buy_price}: {quantity*buy_price} ")
+                        buying_capacity = per_stock_allocation if wallet_balance > per_stock_allocation else wallet_balance
+                        quantity = buying_capacity // buy_price
+                        print(f" {wallet_balance} / {N-len(portfolio)} // {buy_price}: {quantity*buy_price} ")
 
-                        total_portfolio_value = total_portfolio_value - quantity*buy_price
+                        wallet_balance = wallet_balance - quantity*buy_price
                         portfolio[symbol] = {
                             "quantity": quantity,
                             "buy_price": buy_price,
@@ -215,7 +256,8 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                         }
                         transaction_history.append(buy_history)
                 except Exception as e:
-                    print(f"No data for {date}, {symbol}: {e}")
+                    pass
+                    # print(f"No data for {date}, {symbol}: {e}")
 
         # 2. Check for Long Close and Manage Portfolio
         portfolio_to_remove = []
@@ -232,7 +274,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                     sell_price = stock_data["Close"]
                     quantity = portfolio[symbol]["quantity"]
                     money_gained = quantity * sell_price
-                    total_portfolio_value = total_portfolio_value + money_gained
+                    wallet_balance = wallet_balance + money_gained
                     sell_history = {
                         "Stock": symbol,
                         "Sell Price": sell_price,
@@ -242,7 +284,7 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                         if i["Stock"] == symbol and "Sell Price" not in i:
                             i.update(sell_history)
                     print(
-                        f"Sold {quantity} of {symbol} at {sell_price} of price {quantity*sell_price} on date {date} total portfolio value : {total_portfolio_value}."
+                        f"Sold {quantity} of {symbol} at {sell_price} of price {quantity*sell_price} on date {date} total portfolio value : {wallet_balance}."
                     )
                     portfolio_to_remove.append(symbol)
                     del portfolio[symbol]
@@ -262,7 +304,9 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                                 if new_symbol != symbol and new_symbol not in portfolio:
                                     next_stock_data = potential_stocks.loc[new_symbol]
                                     buy_price_next = next_stock_data["Close"]
-                                    quantity_next = total_portfolio_value // buy_price_next
+
+                                    buying_capacity = per_stock_allocation if wallet_balance > per_stock_allocation else wallet_balance
+                                    quantity_next = buying_capacity // buy_price_next
                                     portfolio[new_symbol] = {
                                         "quantity": quantity_next,
                                         "buy_price": buy_price_next,
@@ -275,16 +319,18 @@ def process_trades(combined_df, start_balance, max_stocks=N, pick_n=n):
                                         "Quantity": quantity_next,
                                     }
                                     transaction_history.append(buy_history)
-                                    total_portfolio_value = total_portfolio_value - quantity_next * buy_price_next
+                                    wallet_balance = wallet_balance - quantity_next * buy_price_next
                                     print(
-                                        f"Bought {quantity_next} of {new_symbol} at {buy_price_next} for rs: {quantity_next*buy_price_next} Remaining balance: {total_portfolio_value}"
+                                        f"Bought {quantity_next} of {new_symbol} at {buy_price_next} for rs: {quantity_next*buy_price_next} Remaining balance: {wallet_balance}"
                                     )
 
             except Exception as e:
                 print(f"No data for {date}, {symbol}: {e}")
-        refresh_final_portfolio(portfolio, date, combined_df)
-        balance_sheet[str(date)] = total_portfolio_value
-    return portfolio, transaction_history, total_portfolio_value, balance_sheet
+
+        worth, daily_change = refresh_final_portfolio(portfolio, date, combined_df)
+        portfolio = daily_change
+        balance_sheet[str(date)] = worth + wallet_balance
+    return portfolio, transaction_history, wallet_balance, balance_sheet
 
 
 def main():
@@ -295,7 +341,7 @@ def main():
         generate_data()
         combined_df = load_and_merge_stock_data(CSV_FOLDER_PATH)
 
-    final_portfolio, transaction_history, total_portfolio_value, balance_sheet = process_trades(
+    final_portfolio, transaction_history, wallet_balance, balance_sheet = process_trades(
         combined_df, START_BALANCE, max_stocks=N, pick_n=n
     )
 
@@ -317,11 +363,13 @@ def main():
 
         current_value = final_portfolio[remaining_stocks]["current_value"].astype(int)
         remaining_portfolio_value += current_value
-    print(total_portfolio_value + remaining_portfolio_value)
+    print(wallet_balance + remaining_portfolio_value)
     make_a_beautiful_excel(transaction_history)
     x = input('Do you want an equity curve? Y/Yes or N/No: ')
     if x.lower() in ['y','yes']:
-        create_an_equity_curve(balance_sheet)
+        # Fetch historical data for Nifty 500
+        nifty_data = plot_nifty500_investment(START,END,START_BALANCE)
+        create_curve2(balance_sheet, nifty_data)
     else:
         print("Exiting")
         exit()

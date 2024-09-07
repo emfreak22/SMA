@@ -79,6 +79,10 @@ def generate_data(done=[], split=None):
             price["Sys_Peak"] = price.Sys_Bal.cummax()
             price["Sys_DD"] = price.Sys_Bal - price.Sys_Peak
             price["Symbol"] = symbol
+            price["Long_Condition"] = (price.Fast_MA > price.Slow_MA)
+            price["New_Sell_Condition"] =  (price.Fast_MA < price.Slow_MA) & (
+                price.Return < 0.90
+            )
             price.to_csv(f"downloads/{symbol}.csv")
             # Ensure the DataFrame has enough rows for calculations
             if len(price) < max(
