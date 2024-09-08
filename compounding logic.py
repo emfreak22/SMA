@@ -1,23 +1,37 @@
 import os
-from datetime import datetime
+from config.configs import END,START, Compounding_n as N
+from data_generator import generate_data
 
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-
-from data_generator import END, START, generate_data
 from nifty_data import plot_nifty500_investment
 
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
-n = 10
-N = 20  # Number of stocks to pick if 'long' condition is satisfied
 per_stock_allocation = START_BALANCE / N
 import pandas as pd
-
+n=10
 from excel_creation import make_a_beautiful_excel
 from graph_creation import create_curve2
 from metric_calculation import calculate
 
+def print_green(text):
+    BOLD_UNDERLINE_GREEN = '\033[1;4;32m'
+    RESET = '\033[0m'
+    print(f"{BOLD_UNDERLINE_GREEN}{text}{RESET}")
+
+def print_red(text):
+    RED = '\033[31m'
+    RESET = '\033[0m'
+    print(f"{RED}{text}{RESET}")
+
+def print_blue(text):
+    BOLD_UNDERLINE_ELECTRIC_BLUE = '\033[1;4;94m'
+    RESET = '\033[0m'
+    print(f"{BOLD_UNDERLINE_ELECTRIC_BLUE}{text}{RESET}")
+
+def print_golden(text):
+    BOLD_UNDERLINE_GOLDEN = '\033[1;4;33m'
+    RESET = '\033[0m'
+    print(f"{BOLD_UNDERLINE_GOLDEN}{text}{RESET}")
 
 def create_an_equity_curve(data):
     try:
@@ -132,7 +146,7 @@ def refresh_final_portfolio(portfolio, date, combined_data):
     return worth, portfolio
 
 
-def process_trades(combined_df, start_balance, N=N, pick_n=n):
+def process_trades(combined_df, start_balance, N=N):
     """
     Process trades based on stock conditions and balance.
     """
@@ -143,12 +157,12 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
     # Sort the dates
     all_dates = all_dates.sort_values()
     balance_sheet = {}
-    accumulated_profit = 0
-    metric_calculation_data = {}
     wallet_balance = START_BALANCE
     for date in all_dates:
         today_data = combined_df.loc[date]
-        print(f"Date {date} , Portfolio {len(portfolio)}")
+        print(
+            f"DATE : {date}  | Portfolio full: {len(portfolio)}, no furthur buying"
+        )
         if len(portfolio) < N:
             potential_stocks = today_data[
                 today_data.apply(check_long_condition, axis=1)
@@ -156,7 +170,7 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
             if potential_stocks.empty:
                 # print("No long for the day, sadly...")
                 continue
-            top_stocks = get_top_stocks_by_volume(potential_stocks, date, top_n=pick_n)
+            top_stocks = get_top_stocks_by_volume(potential_stocks, date, top_n=N)
 
             for symbol in top_stocks:
                 try:
@@ -169,9 +183,6 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
                             else wallet_balance
                         )
                         quantity = buying_capacity // buy_price
-                        print(
-                            f" {wallet_balance} / {N-len(portfolio)} // {buy_price}: {quantity*buy_price} "
-                        )
 
                         wallet_balance = wallet_balance - quantity * buy_price
                         portfolio[symbol] = {
@@ -180,8 +191,8 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
                         }
 
                         money_spent = quantity * buy_price
-                        print(
-                            f"Bought {quantity} of {symbol} at {buy_price}. Remaining balance: {balance} on date {date}"
+                        print_green(
+                            f"DATE : {date}  |  Bought {quantity} of {symbol} at {buy_price} for rs: {quantity * buy_price} Remaining balance: {wallet_balance}"
                         )
                         buy_history = {
                             "Stock": symbol,
@@ -218,15 +229,15 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
                     for i in transaction_history:
                         if i["Stock"] == symbol and "Sell Price" not in i:
                             i.update(sell_history)
-                    print(
-                        f"Sold {quantity} of {symbol} at {sell_price} of price {quantity*sell_price} on date {date} total portfolio value : {wallet_balance}."
+                    print_red(
+                        f"DATE : {date}  |  Sold {quantity} of {symbol} at {sell_price} for rs: {quantity * sell_price} Remaining balance: {wallet_balance}"
                     )
                     accumulated_profit = (
                         quantity * sell_price
                         - portfolio[symbol]["buy_price"] * quantity
                     )
-                    print(
-                        f"accumulated profit after selling {symbol} is {accumulated_profit}"
+                    print_golden(
+                        f"DATE : {date}  | Accumulated profit: {accumulated_profit} 🪙🪙🪙🪙"
                     )
                     portfolio_to_remove.append(symbol)
                     del portfolio[symbol]
@@ -268,8 +279,8 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
                                     wallet_balance = (
                                         wallet_balance - quantity_next * buy_price_next
                                     )
-                                    print(
-                                        f"Bought {quantity_next} of {new_symbol} at {buy_price_next} for rs: {quantity_next*buy_price_next} Remaining balance: {wallet_balance}"
+                                    print_green(
+                                        f"DATE : {date}  |  Bought {quantity_next} of {new_symbol} at {buy_price_next} for rs: {quantity_next*buy_price_next} Remaining balance: {wallet_balance}"
                                     )
                     if accumulated_profit >= START_BALANCE / N:
                         # Take a new entry
@@ -310,7 +321,7 @@ def process_trades(combined_df, start_balance, N=N, pick_n=n):
                                     wallet_balance = (
                                         wallet_balance - quantity_next * buy_price_next
                                     )
-                                    print(
+                                    print_blue(
                                         f"Compounded: Bought {quantity_next} of {new_symbol} at {buy_price_next} for rs: {quantity_next * buy_price_next} Remaining balance: {wallet_balance}"
                                     )
             except Exception as e:
@@ -336,14 +347,13 @@ def main():
         wallet_balance,
         balance_sheet,
         last_day_worth,
-    ) = process_trades(combined_df, START_BALANCE, N, pick_n=n)
+    ) = process_trades(combined_df, START_BALANCE, N)
 
     print(
         f"Starting balance : {START_BALANCE}, End balance : {wallet_balance + last_day_worth}"
     )
-    print(f"Final portfolio: {final_portfolio}")
     print(
-        "Converting final portfolio stock quantities into rupees and calculating final amount..."
+        f"Converting final portfolio stock quantities into rupees and calculating final amount... {wallet_balance + last_day_worth}"
     )
     remaining_portfolio_value = 0
     for remaining_stocks in final_portfolio:
