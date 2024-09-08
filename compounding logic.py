@@ -1,84 +1,20 @@
 import os
-from config.configs import END,START, Compounding_n as N
-from data_generator import generate_data
 
+from config.configs import END, START
+from config.configs import Compounding_n as N
+from data_generator import generate_data
 from nifty_data import plot_nifty500_investment
+from pretty_printing import print_blue, print_golden, print_green, print_red
 
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 per_stock_allocation = START_BALANCE / N
 import pandas as pd
-n=10
+
+n = 10
 from excel_creation import make_a_beautiful_excel
 from graph_creation import create_curve2
 from metric_calculation import calculate
-
-def print_green(text):
-    BOLD_UNDERLINE_GREEN = '\033[1;4;32m'
-    RESET = '\033[0m'
-    print(f"{BOLD_UNDERLINE_GREEN}{text}{RESET}")
-
-def print_red(text):
-    RED = '\033[31m'
-    RESET = '\033[0m'
-    print(f"{RED}{text}{RESET}")
-
-def print_blue(text):
-    BOLD_UNDERLINE_ELECTRIC_BLUE = '\033[1;4;94m'
-    RESET = '\033[0m'
-    print(f"{BOLD_UNDERLINE_ELECTRIC_BLUE}{text}{RESET}")
-
-def print_golden(text):
-    BOLD_UNDERLINE_GOLDEN = '\033[1;4;33m'
-    RESET = '\033[0m'
-    print(f"{BOLD_UNDERLINE_GOLDEN}{text}{RESET}")
-
-def create_an_equity_curve(data):
-    try:
-        # Print the data for debugging
-        print("Data received:", data)
-
-        # Convert dictionary to DataFrame
-        df = pd.DataFrame(list(data.items()), columns=["Date", "Value"])
-
-        # Convert 'Date' column to datetime
-        df["Date"] = pd.to_datetime(df["Date"])
-
-        # Set 'Date' as the index
-        df.set_index("Date", inplace=True)
-
-        # Create a Plotly figure
-        fig = go.Figure()
-
-        # Add trace
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,  # Use the index for x-axis
-                y=df["Value"],
-                mode="lines+markers",
-                name="Value",
-                line=dict(color="royalblue", width=2),
-                marker=dict(size=8),
-            )
-        )
-
-        # Update layout
-        fig.update_layout(
-            title="Values Over Time",
-            xaxis_title="Date",
-            yaxis_title="Value",
-            xaxis=dict(
-                tickformat="%b %d", showgrid=True, gridwidth=1, gridcolor="LightGrey"
-            ),
-            yaxis=dict(showgrid=True, gridwidth=1, gridcolor="LightGrey"),
-            template="plotly_white",
-        )
-
-        # Show the plot
-        fig.show()
-
-    except Exception as e:
-        print("An error occurred:", e)
 
 
 def load_and_merge_stock_data(csv_folder_path):
@@ -160,9 +96,7 @@ def process_trades(combined_df, start_balance, N=N):
     wallet_balance = START_BALANCE
     for date in all_dates:
         today_data = combined_df.loc[date]
-        print(
-            f"DATE : {date}  | Portfolio full: {len(portfolio)}, no furthur buying"
-        )
+        print(f"DATE : {date}  | Portfolio full: {len(portfolio)}, no furthur buying")
         if len(portfolio) < N:
             potential_stocks = today_data[
                 today_data.apply(check_long_condition, axis=1)
