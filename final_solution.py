@@ -1,7 +1,7 @@
 import os
 
-from config.configs import START_BALANCE, N, n
-from data_generator import END, START, generate_data
+from config.configs import END,START,START_BALANCE, N, n
+from data_generator import generate_data
 from metric_calculation import calculate
 from nifty_data import plot_nifty500_investment
 
