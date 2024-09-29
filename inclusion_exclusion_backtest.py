@@ -188,7 +188,7 @@ def process_trades(combined_df, start_balance, N=N):
                         buy_price = stock_data["Close"]
                         print(f"{symbol}: BP {buy_price} , WB: {wallet_balance}")
                         if buy_price > wallet_balance:
-                            print("💸 Not buying as we are out of money, shit! 💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸")
+                            print(f"💸 We are fucked, no money for {symbol}💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸")
                             continue
                         buying_capacity = (
                             per_stock_allocation
@@ -268,7 +268,6 @@ def process_trades(combined_df, start_balance, N=N):
                                     next_stock_data = potential_stocks.loc[new_symbol]
                                     buy_price_next = next_stock_data["Close"]
                                     if buy_price_next > wallet_balance:
-                                        print(f"We are fucked, no money for {new_symbol}")
                                         continue
 
                                     buying_capacity = (
