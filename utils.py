@@ -2,7 +2,7 @@ import datetime
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
+# import seaborn as sns
 
 
 def get_today_date():
@@ -81,3 +81,26 @@ def create_plot(data):
 
     # Show plot
     plt.show()
+
+
+import pandas as pd
+
+# Load the Excel file with all sheets
+def replace_occurences():
+    file_path = 'files/all_sheets_with_symbols.xlsx'
+    sheets = pd.read_excel(file_path, sheet_name=None)
+
+    # Define the string you want to replace and its replacement
+    old_value = "RAMCOCEMENT"
+    new_value = "RAMCOCEM"
+
+    # Iterate through all sheets and replace values
+    for sheet_name, df in sheets.items():
+        sheets[sheet_name] = df.replace(old_value, new_value, regex=True)
+
+    # Save back to Excel
+    with pd.ExcelWriter('files/all_sheets_with_symbols.xlsx') as writer:
+        for sheet_name, df in sheets.items():
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+replace_occurences()
+

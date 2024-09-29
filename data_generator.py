@@ -7,23 +7,37 @@ from tqdm import tqdm
 
 import yfinance as yf
 from config.configs import FAST_MA, SLOW_MA, START_BALANCE
-
-
+START = datetime.datetime(1988, 8, 1)
+END = datetime.datetime.now()
+INCLUSION ='Inclusion into Index'
+EXCLUSION = 'Exclusion from Index'
 def get_nifty_500_list():
     nifty500_with_suffix = (
         pd.read_csv("ind_nifty500list.csv")["Symbol"].astype(str) + ".BO"
     )
     return nifty500_with_suffix.tolist()
 
+def get_list_data(date='01-08-1998', symbol_data=[]):
+    data = pd.read_excel('files/all_sheets_with_symbols.xlsx', sheet_name='Nifty 500')
+    working_data = data[data['Event Date'] == date]
+    for row, data in working_data.iterrows():
+        if data['Description'] == INCLUSION:
+            symbol_data.append(data['Symbol'])
+    # print(symbol_data)
+    return list(set(symbol_data))
+
 
 def generate_data():
-    list_of_symbols = get_nifty_500_list()
-
+    wrong_symbols = []
+    list_of_symbols = get_list_data()
+    list_of_symbols = [i+".NS" for i in list_of_symbols]
+    print(list_of_symbols)
     for symbol in tqdm(list_of_symbols, desc="Processing Stocks"):
         try:
             price = yf.download(symbol, start=START, end=END)
 
             if price.empty:
+                wrong_symbols.append(symbol)
                 print(f"No data found for {symbol}. Skipping...")
                 continue
 
@@ -96,6 +110,7 @@ def adjust_moving_averages(slow_ma, fast_ma):
             price["Sys_DD"] = price.Sys_Bal - price.Sys_Peak
             price["Long_Condition"] = price.Fast_MA > price.Slow_MA
             price["Sell_Condition"] = price.Fast_MA < price.Slow_MA
+            price['Symbol'] = symbol
             price["New_Sell_Condition"] = (price.Fast_MA < price.Slow_MA) & (
                 price.Return < 0.90
             )
@@ -107,6 +122,7 @@ def adjust_moving_averages(slow_ma, fast_ma):
 
 
 if __name__ == "__main__":
+    get_list_data()
     choice = input(
         "Do you want to generate new data (1) or adjust moving averages (2)? Enter 1 or 2: "
     )
