@@ -9,7 +9,7 @@ from excel_creation import make_a_beautiful_excel
 from graph_creation import create_curve2
 from metric_calculation import calculate
 
-DELISTED = []
+
 START_BALANCE = 1000000
 CSV_FOLDER_PATH = "downloads/"
 per_stock_allocation = START_BALANCE / N
@@ -118,7 +118,6 @@ def check_long_close_condition(stock_data, updated_stock_symbol):
         print_red(
             f" 💀 💀 💀 💀 💀 💀💀 💀Condition 1 met: {stock_data['Symbol']} is delisted, hence selling. 💀 💀 💀 💀 💀 💀 💀 💀 💀 💀 💀 💀"
         )
-        DELISTED.append(stock_data)
         return True
     elif condition2:
         print(
@@ -277,7 +276,6 @@ class Trader:
             start=START_DATE, end=END_DATE
         )  # Replace this with your actual DatetimeIndex
         for date in dates:
-            print(date)
             date = date.strftime("%Y-%m-%d %H:%M:%S")
             if date in inclusion_dates:
                 symbol_data, updated_stocks_symbols = self.get_list_data_updated(
@@ -285,9 +283,7 @@ class Trader:
                 )
             try:
                 today_data = combined_df.loc[date]
-                print("Data found")
             except Exception:
-                print(f"{date} is a weekend or there is no data..")
                 continue
             filtered_data = today_data[
                 today_data.index.get_level_values("Symbol").isin(updated_stocks_symbols)
@@ -306,14 +302,11 @@ class Trader:
                         if symbol not in portfolio and len(portfolio) < N:
                             stock_data = potential_stocks.loc[symbol]
                             buy_price = stock_data["Close"]
-                            print(f"{symbol}: BP {buy_price} , WB: {wallet_balance}")
                             if buy_price > wallet_balance:
-                                print(
-                                    f"💸 We are fucked, no money for {symbol}💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸"
-                                )
+                                # print(
+                                #     f"💸 We are fucked, no money for {symbol}💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸💸"
+                                # )
                                 continue
-                            if symbol == "CESC":
-                                print("Stop right here")
 
                             buying_capacity = (
                                 per_stock_allocation
@@ -321,8 +314,6 @@ class Trader:
                                 else wallet_balance
                             )
                             quantity = buying_capacity // buy_price
-                            if symbol == "CESC.NS":
-                                print("Right here")
                             wallet_balance = wallet_balance - quantity * buy_price
                             portfolio[symbol] = {
                                 "quantity": quantity,
@@ -411,11 +402,6 @@ class Trader:
                                         quantity_next = (
                                             buying_capacity // buy_price_next
                                         )
-                                        if (
-                                            new_symbol == "CESC.NS"
-                                            and date == "2003-04-14 00:00:00"
-                                        ):
-                                            print("Here we go")
                                         portfolio[new_symbol] = {
                                             "quantity": quantity_next,
                                             "buy_price": buy_price_next,
@@ -494,7 +480,6 @@ class Trader:
             worth, daily_change = refresh_final_portfolio(portfolio, date, combined_df)
             portfolio = daily_change
             balance_sheet[str(date)] = worth + wallet_balance
-        print(DELISTED)
         return portfolio, transaction_history, wallet_balance, balance_sheet, worth
 
 
