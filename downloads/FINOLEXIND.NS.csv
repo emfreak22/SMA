@@ -1,0 +1,2 @@
+Date,Open,Close,Volume,Return,Bench_Bal,Bench_Peak,Bench_DD,Fast_MA,Slow_MA,Avg_Volume_10D,Long,Sys_Ret,Sys_Bal,Sys_Peak,Sys_DD,Symbol,Long_Condition,Sell_Condition,New_Sell_Condition
+2019-08-02,512.0,521.0499877929688,32830,,,,,,,,False,1.0,1000000.0,1000000.0,0.0,FINOLEXIND.NS,False,False,False

@@ -11,8 +11,6 @@ def make_a_beautiful_excel(transaction_history=None):
     df["Percentage Change"] = (
         (df["Sell Price"] - df["Buy Price"]) / df["Buy Price"]
     ) * 100
-    df["Date of selling"] = df["Date of selling"].dt.date
-    df["Date of buying"] = df["Date of buying"].dt.date
     df["Relative Gain"] = (
         df["Sell Price"] / df["Buy Price"] / df["Buy Price"]
     ) / START_BALANCE

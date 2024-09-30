@@ -9,6 +9,7 @@ def plot_nifty500_investment(start_date, end_date, initial_investment=100000):
 
     data = nifty500.history(start=start_date, end=end_date)
 
+    print(f"Plotting graph {start_date}, {end_date}")
     if data.empty:
         print("No data available for the given date range.")
         return
