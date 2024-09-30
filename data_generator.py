@@ -29,54 +29,59 @@ def get_list_data(date='01-08-1998', symbol_data=[]):
 
 def generate_data():
     wrong_symbols = []
+    folder_path = "downloads/"
+    files = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if
+             os.path.isfile(os.path.join(folder_path, f)) and f.endswith('.csv')]
     list_of_symbols = get_list_data()
     list_of_symbols = [i+".NS" for i in list_of_symbols]
     print(list_of_symbols)
     for symbol in tqdm(list_of_symbols, desc="Processing Stocks"):
-        try:
-            price = yf.download(symbol, start=START, end=END)
+        if symbol not in files:
+            try:
+                price = yf.download(symbol, start=START, end=END)
 
-            if price.empty:
-                wrong_symbols.append(symbol)
-                print(f"No data found for {symbol}. Skipping...")
-                continue
+                if price.empty:
+                    wrong_symbols.append(symbol)
+                    print(f"No data found for {symbol}. Skipping...")
+                    continue
 
-            price = price.drop(["High", "Low", "Adj Close"], axis=1)
-            price["Return"] = price.Close / price.Close.shift(1)
-            price["Bench_Bal"] = START_BALANCE * price.Return.cumprod()
-            price["Bench_Peak"] = price.Bench_Bal.cummax()
-            price["Bench_DD"] = price.Bench_Bal - price.Bench_Peak
+                price = price.drop(["High", "Low", "Adj Close"], axis=1)
+                price["Return"] = price.Close / price.Close.shift(1)
+                price["Bench_Bal"] = START_BALANCE * price.Return.cumprod()
+                price["Bench_Peak"] = price.Bench_Bal.cummax()
+                price["Bench_DD"] = price.Bench_Bal - price.Bench_Peak
 
-            price["Fast_MA"] = price.Close.rolling(window=FAST_MA).mean()
-            price["Slow_MA"] = price.Close.rolling(window=SLOW_MA).mean()
+                price["Fast_MA"] = price.Close.rolling(window=FAST_MA).mean()
+                price["Slow_MA"] = price.Close.rolling(window=SLOW_MA).mean()
 
-            price["Avg_Volume_10D"] = price.Volume.rolling(window=10).mean()
+                price["Avg_Volume_10D"] = price.Volume.rolling(window=10).mean()
 
-            price["Long"] = (price.Fast_MA > price.Slow_MA) & (
-                price.Volume > price["Avg_Volume_10D"]
-            )
+                price["Long"] = (price.Fast_MA > price.Slow_MA) & (
+                    price.Volume > price["Avg_Volume_10D"]
+                )
 
-            price["Sys_Ret"] = np.where(
-                price.Long == False,
-                1,
-                np.where(price.Long.shift(1) == True, price.Return, 1),
-            )
-            price["Sys_Bal"] = START_BALANCE * price.Sys_Ret.cumprod()
-            price["Sys_Peak"] = price.Sys_Bal.cummax()
-            price["Sys_DD"] = price.Sys_Bal - price.Sys_Peak
-            price["Symbol"] = symbol
-            price["Long_Condition"] = price.Fast_MA > price.Slow_MA
-            price["Sell_Condition"] = price.Fast_MA < price.Slow_MA
-            price["New_Sell_Condition"] = (price.Fast_MA < price.Slow_MA) & (
-                price.Return < 0.90
-            )
-            price.to_csv(f"downloads/{symbol}.csv")
+                price["Sys_Ret"] = np.where(
+                    price.Long == False,
+                    1,
+                    np.where(price.Long.shift(1) == True, price.Return, 1),
+                )
+                price["Sys_Bal"] = START_BALANCE * price.Sys_Ret.cumprod()
+                price["Sys_Peak"] = price.Sys_Bal.cummax()
+                price["Sys_DD"] = price.Sys_Bal - price.Sys_Peak
+                price["Symbol"] = symbol
+                price["Long_Condition"] = price.Fast_MA > price.Slow_MA
+                price["Sell_Condition"] = price.Fast_MA < price.Slow_MA
+                price["New_Sell_Condition"] = (price.Fast_MA < price.Slow_MA) & (
+                    price.Return < 0.90
+                )
+                price.to_csv(f"downloads/{symbol}.csv")
 
-            if len(price) < max(FAST_MA, SLOW_MA, 10):
-                print(f"Not enough data for {symbol}. Skipping...")
+                if len(price) < max(FAST_MA, SLOW_MA, 10):
+                    print(f"Not enough data for {symbol}. Skipping...")
 
-        except Exception as e:
-            print(f"Exception occurred for {symbol}: {e}")
+            except Exception as e:
+                print(f"Exception occurred for {symbol}: {e}")
+    print(wrong_symbols)
 
 
 def adjust_moving_averages(slow_ma, fast_ma):

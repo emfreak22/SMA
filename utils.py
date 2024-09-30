@@ -3,7 +3,9 @@ import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
 # import seaborn as sns
-
+import os
+INCLUSION ='Inclusion into Index'
+EXCLUSION = 'Exclusion from Index'
 
 def get_today_date():
     weekno = datetime.datetime.today().weekday()
@@ -91,8 +93,8 @@ def replace_occurences():
     sheets = pd.read_excel(file_path, sheet_name=None)
 
     # Define the string you want to replace and its replacement
-    old_value = "RAMCOCEMENT"
-    new_value = "RAMCOCEM"
+    old_value = "ASSAMCO"
+    new_value = "ACIL"
 
     # Iterate through all sheets and replace values
     for sheet_name, df in sheets.items():
@@ -102,5 +104,53 @@ def replace_occurences():
     with pd.ExcelWriter('files/all_sheets_with_symbols.xlsx') as writer:
         for sheet_name, df in sheets.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-replace_occurences()
+
+def get_list_data(date='01-08-1998', symbol_data=[]):
+    whole_data = []
+    data = pd.read_excel('files/all_sheets_with_symbols.xlsx', sheet_name='Nifty 500')
+    working_data = data[data['Event Date'] == date]
+    for row, data in working_data.iterrows():
+        if data['Description'] == INCLUSION:
+            symbol_data = {}
+            symbol_data = {"name": data['Scrip Name'], "Symbol": data['Symbol']}
+            whole_data.append(symbol_data)
+    # print(symbol_data)
+    return whole_data
+def pick_non_existing_files():
+    wrong_symbols = []
+    folder_path = "downloads/"
+    files = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if
+             os.path.isfile(os.path.join(folder_path, f)) and f.endswith('.csv')]
+    list_of_symbols = get_list_data()
+    # list_of_symbols = [i['Symbol'] + ".NS" for i in list_of_symbols]
+    print(list_of_symbols)
+
+    for symbol in list_of_symbols:
+        ticker = symbol['Symbol'] + ".NS"
+        if ticker not in files:
+            wrong_symbols.append(symbol['name'])
+    print(len(wrong_symbols))
+    print(wrong_symbols)
+
+import pandas as pd
+
+# Step 1: Read the Excel file
+file_path = 'files/all_sheets_with_symbols.xlsx'
+df = pd.read_excel(file_path, sheet_name='Nifty 500')  # Specify the correct sheet name
+
+# Step 2: Display the original data types (optional)
+print("Original Data Types:")
+print(df.dtypes)
+
+# Step 3: Convert the specified column to datetime
+# Replace 'YourDateColumn' with the actual column name containing date strings
+df['Event Date'] = pd.to_datetime(df['Event Date'], format='%d-%m-%Y')
+# Step 3: Format the datetime column to a string with specific format
+df['Event Date'] = df['Event Date'].dt.strftime('%m-%d-%Y 00:00:00')
+# Step 4: Display the updated data types (optional)
+print("Updated Data Types:")
+print(df.dtypes)
+
+# Step 5: Save back to Excel (optional)
+df.to_excel('files/all_sheets_with_symbols.xlsx', index=False)
 
